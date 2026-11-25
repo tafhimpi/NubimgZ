@@ -1,4 +1,5 @@
-const HOST = "https://passtheima.ge";
+
+const HOST = "https://ptscreens.com";
 
 export default {
   async fetch(request, env) {
@@ -24,18 +25,19 @@ async function handleUpload(request, env) {
     if (!file || typeof file === "string") {
       return json({ error: "No file provided" }, 400);
     }
+
     if (!file.type.startsWith("image/")) {
       return json({ error: "Only images allowed" }, 400);
     }
+
     if (file.size > 10 * 1024 * 1024) {
       return json({ error: "Max 10MB" }, 400);
     }
 
     const fd = new FormData();
     fd.append("source", file, file.name || "image.png");
-    fd.append("format", "json");
 
-    const res = await fetch(HOST + "/api/1/upload", {
+    const res = await fetch(`${HOST}/api/1/upload`, {
       method: "POST",
       headers: {
         "X-API-Key": env.IMG_KEY,
@@ -44,39 +46,42 @@ async function handleUpload(request, env) {
       body: fd,
     });
 
-    const text = await res.text();
+    const responseText = await res.text();
+
     let data;
     try {
-      data = JSON.parse(text);
+      data = JSON.parse(responseText);
     } catch {
-      return json(
-        {
-          error:
-            "Host replied with status " +
-            res.status +
-            ": " +
-            text.replace(/<[^>]*>/g, "").trim().slice(0, 120),
-        },
-        502
-      );
+      return json({
+        error: `PTScreens replied with status ${res.status}: ${responseText.replace(/<[^>]*>/g, "").trim().slice(0, 150)}`
+      }, 502);
     }
 
-    const img = data.image || data.data;
+    const img = data.image || data.data?.image || data.data;
+
     if (!res.ok || !img) {
-      return json(
-        { error: data?.error?.message || "Upload failed (" + res.status + ")" },
-        502
-      );
+      return json({
+        error: data.error?.message || data.message || `Upload failed (${res.status})`
+      }, 502);
+    }
+
+    const imageUrl = img.url || img.display_url;
+
+    if (!imageUrl) {
+      return json({ error: "Image uploaded but URL not found in response" }, 502);
     }
 
     return json({
-      url: img.url || img.display_url,
-      display_url: img.display_url,
-      thumb: img.thumb?.url,
-      viewer: img.url_viewer,
+      url: imageUrl,
+      display_url: img.display_url || imageUrl,
+      thumb: img.thumb?.url || "",
+      viewer: img.url_viewer || ""
     });
+
   } catch (e) {
-    return json({ error: "Server error: " + (e?.message || "unknown") }, 500);
+    return json({
+      error: "Server error: " + (e?.message || "unknown")
+    }, 500);
   }
 }
 
