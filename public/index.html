@@ -1,211 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>NubZ Host</title>
-<link rel="icon" type="image/png" href="/favicon.png">
-<link rel="apple-touch-icon" href="/favicon.png">
-<style>
-  :root{
-    --bg:#f3eee4; --card:#fffdf7; --ink:#151412; --muted:#7c7566; --accent:#ff5a1f; --dot:#d9d2c3;
-  }
-  @media (prefers-color-scheme: dark){
-    :root{
-      --bg:#121110; --card:#1b1a17; --ink:#f1ece0; --muted:#8b8577; --accent:#ff7a45; --dot:#26241f;
-    }
-  }
-  *{box-sizing:border-box;margin:0}
-  html,body{min-height:100%}
-  body{
-    display:flex;justify-content:center;padding:12vh 20px 48px;
-    background-color:var(--bg);
-    background-image:radial-gradient(var(--dot) 1.2px,transparent 1.2px);
-    background-size:22px 22px;
-    color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;
-  }
-  .wrap{width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center}
-
-  .drop-wrap{position:relative;width:112px;height:112px;margin-bottom:14px}
-  .outline{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
-  .outline rect{fill:none;stroke:var(--accent);stroke-width:2;stroke-dasharray:7 7;opacity:0;transition:opacity .25s}
-  .drop-wrap:hover .outline rect,.drop-wrap.over .outline rect{opacity:1;animation:march .8s linear infinite}
-  @keyframes march{to{stroke-dashoffset:-14}}
-  .drop{
-    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;
-    background:var(--card);border:2px solid var(--ink);border-radius:14px;color:var(--ink);
-    transition:transform .3s cubic-bezier(.2,.9,.3,1),box-shadow .3s cubic-bezier(.2,.9,.3,1);
-  }
-  .drop-wrap:hover .drop,.drop-wrap.over .drop{transform:translate(-9px,-9px);box-shadow:6px 6px 0 var(--ink)}
-  .drop:active{transform:translate(-2px,-2px);box-shadow:2px 2px 0 var(--ink)}
-  .drop input{display:none}
-  .drop svg{width:34px;height:34px;overflow:visible}
-  .drop .arrow{transition:transform .3s cubic-bezier(.2,.9,.3,1)}
-  .drop-wrap:hover .arrow,.drop-wrap.over .arrow{transform:translateY(-3px)}
-
-  .hint{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;letter-spacing:.04em;color:var(--muted);text-align:center;margin-bottom:26px}
-  .hint b{color:var(--ink);font-weight:600}
-
-  .queue{width:100%;display:flex;flex-direction:column;gap:10px}
-  .item{
-    position:relative;display:flex;align-items:center;gap:12px;padding:10px;overflow:hidden;
-    background:var(--card);border:1.5px solid var(--ink);border-radius:12px;animation:rise .35s cubic-bezier(.2,.9,.3,1);
-  }
-  @keyframes rise{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
-  .thumb{width:46px;height:46px;flex:none;object-fit:cover;border-radius:8px;border:1.5px solid var(--ink);background:var(--bg)}
-  .item input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--ink);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
-  .item.busy input{color:var(--muted)}
-  .item.busy::after{
-    content:"";position:absolute;left:0;bottom:0;height:3px;width:40%;background:var(--accent);
-    animation:load 1.1s ease-in-out infinite;
-  }
-  @keyframes load{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
-
-  .actions{display:flex;gap:8px;flex:none}
-  .ibtn{
-    position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center;
-    background:var(--card);color:var(--ink);border:1.5px solid var(--ink);border-radius:9px;cursor:pointer;
-    transition:transform .2s cubic-bezier(.2,.9,.3,1),box-shadow .2s cubic-bezier(.2,.9,.3,1),background .15s,color .15s,border-color .15s;
-  }
-  .ibtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
-  .ibtn:hover:not(:disabled){background:var(--accent);border-color:var(--accent);color:#fff;transform:translate(-2px,-2px);box-shadow:3px 3px 0 var(--ink)}
-  .ibtn:active:not(:disabled){transform:translate(0,0);box-shadow:none}
-  .ibtn:disabled{opacity:.35;cursor:default}
-
-  .ibtn .ic-copy .back{transition:transform .25s cubic-bezier(.2,.9,.3,1)}
-  .ibtn:hover:not(:disabled) .ic-copy .back{transform:translate(1.5px,1.5px)}
-  .ibtn .ic-copy,.ibtn .ic-check{transition:opacity .2s,transform .25s cubic-bezier(.2,.9,.3,1)}
-  .ibtn .ic-check{position:absolute;opacity:0;transform:scale(.6)}
-  .ibtn .ic-check path{stroke-dasharray:24;stroke-dashoffset:24}
-  .ibtn.done{background:var(--accent);border-color:var(--accent);color:#fff}
-  .ibtn.done .ic-copy{opacity:0;transform:scale(.6)}
-  .ibtn.done .ic-check{opacity:1;transform:scale(1)}
-  .ibtn.done .ic-check path{animation:draw .35s .05s ease forwards}
-  @keyframes draw{to{stroke-dashoffset:0}}
-
-  .ibtn .ic-open .fly{transition:transform .25s cubic-bezier(.2,.9,.3,1)}
-  .ibtn:hover:not(:disabled) .ic-open .fly{transform:translate(2px,-2px)}
-
-  .msg{margin-top:14px;font-size:12.5px;color:#d6401a;min-height:18px;text-align:center}
-
-  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="drop-wrap" id="dropWrap">
-    <svg class="outline" viewBox="0 0 112 112" aria-hidden="true"><rect x="1" y="1" width="110" height="110" rx="14"/></svg>
-    <label class="drop" id="drop" title="Select an image">
-      <input type="file" id="file" accept="image/*" multiple>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
-        <g class="arrow"><path d="M7 9l5-5 5 5"/><path d="M12 4v12"/></g>
-      </svg>
-    </label>
-  </div>
-  <div class="hint"><b>click</b> &middot; <b>drop</b> &middot; <b>paste</b></div>
-  <div class="queue" id="queue"></div>
-  <div class="msg" id="msg"></div>
-</div>
-
-<script>
-const $ = id => document.getElementById(id);
-const queue = $("queue"), wrap = $("dropWrap");
-const MAX = 10 * 1024 * 1024;
-
-/* history is kept only until the page is refreshed; clear any old saved list */
-try{ localStorage.removeItem("i_tafhim_history"); }catch{}
-
-const ICON_COPY =
-  '<svg class="ic-copy" viewBox="0 0 24 24" aria-hidden="true">' +
-    '<rect class="back" x="9" y="9" width="12" height="12" rx="2.5"/>' +
-    '<path d="M15 9V6.5A2.5 2.5 0 0 0 12.5 4h-6A2.5 2.5 0 0 0 4 6.5v6A2.5 2.5 0 0 0 6.5 15H9"/>' +
-  '</svg>' +
-  '<svg class="ic-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-
-const ICON_OPEN =
-  '<svg class="ic-open" viewBox="0 0 24 24" aria-hidden="true">' +
-    '<path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>' +
-    '<g class="fly"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/></g>' +
-  '</svg>';
-
-function showMsg(t){
-  $("msg").textContent = t;
-  clearTimeout(showMsg.t); showMsg.t = setTimeout(() => $("msg").textContent = "", 6000);
-}
-
-function makeItem(thumbSrc, value, busy){
-  const row = document.createElement("div");
-  row.className = "item" + (busy ? " busy" : "");
-  row.innerHTML =
-    '<img class="thumb" alt="">' +
-    '<input readonly>' +
-    '<div class="actions">' +
-      '<button class="ibtn copy" type="button" title="Copy link" aria-label="Copy link">' + ICON_COPY + '</button>' +
-      '<button class="ibtn open" type="button" title="Open in new tab" aria-label="Open in new tab">' + ICON_OPEN + '</button>' +
-    '</div>';
-  row.querySelector("img").src = thumbSrc;
-
-  const input = row.querySelector("input");
-  const copyBtn = row.querySelector(".copy");
-  const openBtn = row.querySelector(".open");
-  input.value = value;
-  copyBtn.disabled = openBtn.disabled = !!busy;
-
-  input.onclick = () => input.select();
   copyBtn.onclick = async () => {
+    const link = row.dataset.url || input.value;
+
     try{
-      await navigator.clipboard.writeText(input.value);
+      await navigator.clipboard.writeText(link);
     }catch{
-      input.select(); document.execCommand && document.execCommand("copy");
+      const temp = document.createElement("textarea");
+      temp.value = link;
+      temp.style.position = "fixed";
+      temp.style.opacity = "0";
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand("copy");
+      temp.remove();
     }
+
     copyBtn.classList.add("done");
     clearTimeout(copyBtn._t);
     copyBtn._t = setTimeout(() => copyBtn.classList.remove("done"), 1600);
   };
-  openBtn.onclick = () => window.open(input.value, "_blank", "noopener,noreferrer");
 
-  queue.prepend(row);
-  return row;
-}
-
-async function upload(file){
-  if(!file) return;
-  if(!file.type.startsWith("image/")) return showMsg("Only images are allowed");
-  if(file.size > MAX) return showMsg("Max size is 10MB");
-
-  const row = makeItem(URL.createObjectURL(file), "Uploading...", true);
-  try{
-    const fd = new FormData();
-    fd.append("file", file, file.name || "image.png");
-    const r = await fetch("/api/upload", { method:"POST", body:fd });
-    let d;
-    try{ d = await r.json(); }catch{ throw new Error("Bad response (" + r.status + ")"); }
-    if(!r.ok || !d.url) throw new Error(d.error || "Upload failed");
-
-    row.querySelector("input").value = d.url;
-    row.querySelectorAll(".ibtn").forEach(b => b.disabled = false);
-    row.classList.remove("busy");
-  }catch(e){
-    row.remove();
-    showMsg(e.message);
-  }
-}
-
-const uploadAll = files => [...files].forEach(upload);
-
-$("file").onchange = e => { uploadAll(e.target.files); e.target.value = ""; };
-
-let depth = 0;
-window.addEventListener("dragenter", e => { e.preventDefault(); depth++; wrap.classList.add("over"); });
-window.addEventListener("dragleave", () => { depth = Math.max(0, depth - 1); if(!depth) wrap.classList.remove("over"); });
-window.addEventListener("dragover", e => e.preventDefault());
-window.addEventListener("drop", e => { e.preventDefault(); depth = 0; wrap.classList.remove("over"); uploadAll(e.dataTransfer.files); });
-
-document.addEventListener("paste", e => {
-  const files = [...(e.clipboardData?.files || [])].filter(x => x.type.startsWith("image/"));
-  if(files.length) uploadAll(files);
-});
-</script>
-</body>
-</html>
+  openBtn.onclick = () => window.open(
+    row.dataset.url || input.value,
+    "_blank",
+    "noopener,noreferrer"
+  );
