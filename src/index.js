@@ -1,4 +1,16 @@
-export async function onRequestPost({ request, env }) {
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/api/upload" && request.method === "POST") {
+      return handleUpload(request, env);
+    }
+
+    return env.ASSETS.fetch(request);
+  },
+};
+
+async function handleUpload(request, env) {
   try {
     const incoming = await request.formData();
     const file = incoming.get("file");
